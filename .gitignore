@@ -1,0 +1,31 @@
+# ===== Java / Maven（后端） =====
+backend/target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+hs_err_pid*
+
+# ===== Node / Vite（前端） =====
+frontend/node_modules/
+frontend/dist/
+frontend/*.local
+npm-debug.log*
+yarn-error.log*
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+
+# ===== 临时/上传文件 =====
+*.tmp
+upload/

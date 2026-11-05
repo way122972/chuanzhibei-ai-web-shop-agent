@@ -1,0 +1,47 @@
+/* 全局样式 —— 智能电商导购平台（电商暖橙色主题） */
+:root {
+  --sg-primary: #ff6a3c;        /* 主题橙 */
+  --sg-primary-deep: #f5541f;   /* 深橙 */
+  --sg-primary-light: #fff3ec;  /* 浅橙背景 */
+  --sg-text: #333333;
+  --sg-text-secondary: #888888;
+  --sg-bg: #f5f6fa;
+  --sg-header-height: 64px;
+  --sg-aside-width: 200px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  color: var(--sg-text);
+}
+
+body {
+  background-color: var(--sg-bg);
+}
+
+/* Element Plus 主题色覆盖为电商橙 */
+:root {
+  --el-color-primary: #ff6a3c;
+  --el-color-primary-light-3: #ff926e;
+  --el-color-primary-light-5: #ffb696;
+  --el-color-primary-light-7: #ffd9c6;
+  --el-color-primary-light-8: #ffe5d9;
+  --el-color-primary-light-9: #fff3ec;
+  --el-color-primary-dark-2: #f5541f;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 3px;
+}
