@@ -23,8 +23,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/**")
-                // /ws/** 为 WebSocket 握手路径，由 WsTokenHandshakeInterceptor 单独校验 token
-                .excludePathPatterns("/user/login", "/error", "/ws/**");
+                .excludePathPatterns("/user/login", "/error");
     }
 
     /**

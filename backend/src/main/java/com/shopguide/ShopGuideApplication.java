@@ -14,9 +14,8 @@ import java.nio.charset.Charset;
 public class ShopGuideApplication {
     public static void main(String[] args) {
         /*
-         * 中文 Windows 的 JVM 默认字符集是 GBK，而 LangChain4j 的 JDK HTTP 客户端在读取
-         * DeepSeek 的 SSE 流时用的是 InputStreamReader 默认字符集，会把模型返回的中文
-         * （尤其是工具参数，如“生活用品”）解码成乱码。这里在 Spring 容器启动前强制 UTF-8。
+         * 中文 Windows 的 JVM 默认字符集是 GBK，容易导致中文请求/响应乱码。
+         * 这里在 Spring 容器启动前统一强制 UTF-8，保证商品名、分类名等中文不乱码。
          */
         if (!"UTF-8".equalsIgnoreCase(System.getProperty("file.encoding"))) {
             System.setProperty("file.encoding", "UTF-8");
