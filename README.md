@@ -5,7 +5,7 @@
 ## 项目结构
 
 ```
-传智杯项目/
+chuanzhibei-ai-web-shop-agent/      # GitHub 仓库名（本地目录：传智杯项目）
 ├── backend/                        # Spring Boot 后端
 │   ├── pom.xml
 │   └── src/main/
@@ -53,8 +53,11 @@
 └── sql/
     ├── shop_guide.sql              # 建库建表脚本（含 user.money、category 分类表、cart 表、默认账号 admin/123456）
     ├── upgrade_cart.sql            # 已有数据库的升级脚本（加 money 字段 + 建 cart 表）
-    └── upgrade_category.sql        # 已有数据库的升级脚本（建 category 表 + product 加 category_id，可重复执行）
+    ├── upgrade_category.sql        # 已有数据库的升级脚本（建 category 表 + product 加 category_id，可重复执行）
+    └── database/shop_guide.sql     # 当前数据库完整备份（mysqldump，可直接 mysql -uroot -p < 该文件 一键还原）
 ```
+
+> 另可按需补充 `docs/` 目录存放文档、PPT、答辩材料。
 
 ## 功能说明
 
