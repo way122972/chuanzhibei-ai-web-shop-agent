@@ -51,13 +51,9 @@ chuanzhibei-ai-web-shop-agent/      # GitHub 仓库名（本地目录：传智�
 │       ├── views/Statistic.vue     # 销售数据统计页（ECharts 饼图 + 柱状图，当天/近7天 TOP5）
 │       └── components/AiAssistant.vue  # AI 助手右侧对话面板（WebSocket 流式输出）
 └── sql/
-    ├── shop_guide.sql              # 建库建表脚本（含 user.money、category 分类表、cart 表、默认账号 admin/123456）
-    ├── upgrade_cart.sql            # 已有数据库的升级脚本（加 money 字段 + 建 cart 表）
-    ├── upgrade_category.sql        # 已有数据库的升级脚本（建 category 表 + product 加 category_id，可重复执行）
-    └── database/shop_guide.sql     # 当前数据库完整备份（mysqldump，可直接 mysql -uroot -p < 该文件 一键还原）
+    └── shop_guide.sql              # 数据库完整脚本（mysqldump 导出：建库 + 4 张表 + 全量数据 + 默认账号 admin/123456）
+                                    # 导入方式：mysql -uroot -p < sql/shop_guide.sql
 ```
-
-> 另可按需补充 `docs/` 目录存放文档、PPT、答辩材料。
 
 ## 功能说明
 
@@ -103,8 +99,14 @@ chuanzhibei-ai-web-shop-agent/      # GitHub 仓库名（本地目录：传智�
 ## 运行步骤
 
 ### 1. 数据库
-全新安装：执行 `sql/shop_guide.sql`（MySQL 8），创建 `shop_guide` 库、用户表（含 `money` 余额字段）、**商品分类表**、商品表（含 `category_id`）、购物车表。
-已有数据库（之前执行过旧脚本）：执行 `sql/upgrade_cart.sql`（加 money、建 cart 表）和 `sql/upgrade_category.sql`（建 category 表、product 加 category_id 并归类已有商品，两个脚本均可重复执行）。
+直接导入 `sql/shop_guide.sql`（MySQL 8）：
+
+```bash
+mysql -uroot -p < sql/shop_guide.sql
+```
+
+该脚本为 mysqldump 完整导出，自带 `CREATE DATABASE shop_guide`，会一次性创建 `shop_guide` 库、
+用户表（含 `money` 余额字段）、商品分类表、商品表（含 `category_id`）、购物车表，并写入全量数据。
 默认账号：**admin / 123456**，初始余额 **10000.00**。
 
 ### 2. 后端（端口 8081）
