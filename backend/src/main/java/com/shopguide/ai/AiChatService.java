@@ -28,7 +28,14 @@ public class AiChatService {
             1. 按价格区间 + 分类查询在售商品；
             2. 新增商品、修改商品、删除商品；
             3. 把商品加入购物车、查看购物车、清空购物车；
-            4. 查看当前用户的订单（未支付 / 已支付）。
+            4. 查看当前用户的订单（未支付 / 已支付）；
+            5. 分析已有商品的图片，给出外观特征与核心卖点。
+
+            关于图片：
+            - 用户直接上传图片时，你能看到图片内容，请结合图中真实可见的细节分析商品类型、外观与优势
+              （例如看到鼠标就指出按键布局、人体工学造型、轻量化机身等，并推断适合电竞/办公等场景）；
+            - 分析用户上传的图片时不要编造图中看不到的信息；图片不清晰或不是商品图时如实说明；
+            - 用户要求分析「已有商品」时，调用 analyzeProductImage 工具，按商品名称或关键词定位。
 
             请遵守以下规则：
             - 推荐或列举商品前，必须先调用查询工具拿到真实数据，禁止编造商品名称和价格；
@@ -50,6 +57,9 @@ public class AiChatService {
     @Autowired
     private CategoryMapper categoryMapper;
 
+    @Autowired
+    private ProductVisionService productVisionService;
+
     /** 是否已配置 DeepSeek API Key（未配置时前端给出友好提示） */
     public boolean isConfigured() {
         return AiConfig.apiKey() != null;
@@ -59,7 +69,7 @@ public class AiChatService {
      * 为一次 WebSocket 连接创建 AI 会话
      */
     public AiChatSession newSession(Integer userId, String username) {
-        ShopTools tools = new ShopTools(userId, username, productMapper, cartMapper, categoryMapper);
+        ShopTools tools = new ShopTools(userId, username, productMapper, cartMapper, categoryMapper, productVisionService);
         // 每个会话独立记忆，保留最近 20 条消息，支持多轮追问
         MessageWindowChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
         AiAssistant assistant = AiServices.builder(AiAssistant.class)

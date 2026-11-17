@@ -32,14 +32,18 @@ public class ShopTools {
     private final ProductMapper productMapper;
     private final CartMapper cartMapper;
     private final CategoryMapper categoryMapper;
+    /** 图片分析服务：工具内部对商品图片做一次视觉分析，再把结论交给主模型组织语言 */
+    private final ProductVisionService visionService;
 
     public ShopTools(Integer userId, String username,
-                     ProductMapper productMapper, CartMapper cartMapper, CategoryMapper categoryMapper) {
+                     ProductMapper productMapper, CartMapper cartMapper, CategoryMapper categoryMapper,
+                     ProductVisionService visionService) {
         this.userId = userId;
         this.username = username;
         this.productMapper = productMapper;
         this.cartMapper = cartMapper;
         this.categoryMapper = categoryMapper;
+        this.visionService = visionService;
     }
 
     /* ==================== 查询类 ==================== */
@@ -221,6 +225,38 @@ public class ShopTools {
         }
         productMapper.deleteById(product.getId());
         return "删除成功：商品「" + product.getName() + "」（¥" + product.getPrice() + "）已从商品表移除。";
+    }
+
+    /* ==================== 图片分析类 ==================== */
+
+    @Tool("""
+            分析某个「已有商品」的图片，给出该商品的外观特征与核心卖点（材质、设计、性能倾向、适用场景）。
+            按商品名称 / 关键词模糊定位（例如“鼠标”“机械键盘”）；
+            用户说“分析一下某个商品”“这个商品有什么优势”“它适合什么场景”时调用本工具。
+            """)
+    public String analyzeProductImage(
+            @P("商品名称或关键词，例如“鼠标”“机械键盘”“保温杯”") String keyword,
+            @P(value = "用户特别关心的点，例如“灵敏度”“是否适合电竞”；没有特别关注就传空字符串", required = false) String focus) {
+
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return "请提供要分析的商品名称或关键词。";
+        }
+        String key = keyword.trim();
+        LambdaQueryWrapper<Product> qw = new LambdaQueryWrapper<>();
+        qw.like(Product::getName, key).orderByAsc(Product::getId).last("LIMIT 1");
+        Product product = productMapper.selectOne(qw);
+        if (product == null) {
+            return "没有找到名称包含「" + key + "」的商品，无法做图片分析。可以先用查询工具确认商品名称。";
+        }
+        if (product.getImage() == null || product.getImage().trim().isEmpty()) {
+            return "商品「" + product.getName() + "」还没有上传图片，无法做图片分析。";
+        }
+        // 补齐分类名称，图片分析需要给模型更多上下文
+        product.setCategoryName(categoryNameOf(product.getCategoryId()));
+
+        String analysis = visionService.analyzeProduct(product, focus);
+        return "商品：" + product.getName() + "（售价 ¥" + product.getPrice() + "，分类："
+                + product.getCategoryName() + "）\n\n图片分析结果：\n" + analysis;
     }
 
     /* ==================== 购物车操作类 ==================== */

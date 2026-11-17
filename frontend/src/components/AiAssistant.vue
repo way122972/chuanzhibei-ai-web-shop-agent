@@ -25,7 +25,7 @@
       <div ref="bodyRef" class="ai-body">
         <div v-if="messages.length === 0" class="ai-welcome">
           <p class="welcome-title">你好，我是导购助手 👋</p>
-          <p class="welcome-tip">可以帮你查商品、改商品、清空购物车、查订单。试试：</p>
+          <p class="welcome-tip">可以帮你查商品、改商品、清空购物车、查订单，也能看懂商品图片、帮你分析它的卖点。试试：</p>
           <div class="quick-list">
             <button v-for="q in quickPrompts" :key="q" class="quick-item" @click="sendText(q)">{{ q }}</button>
           </div>
@@ -39,6 +39,9 @@
                 <el-icon><Connection /></el-icon>{{ t }}
               </span>
             </div>
+            <div v-if="m.image" class="msg-image">
+              <img :src="m.image" alt="图片" @click="preview(m.image)" />
+            </div>
             <div class="bubble" :class="{ error: m.error }">
               <span v-if="m.content">{{ m.content }}</span>
               <span v-else-if="m.streaming" class="thinking">正在思考中…</span>
@@ -50,23 +53,72 @@
 
       <!-- 输入区 -->
       <footer class="ai-footer">
-        <el-input
-          v-model="input"
-          type="textarea"
-          :autosize="{ minRows: 1, maxRows: 4 }"
-          resize="none"
-          placeholder="问我点什么，例如：推荐 1-100 元的生活用品"
-          @keydown.enter.exact.prevent="sendText()"
-        />
-        <el-button type="primary" :icon="Promotion" :loading="streaming" @click="sendText()">发送</el-button>
+        <!-- 已选图片预览 -->
+        <div v-if="attachedImage" class="attach-preview">
+          <img :src="attachedImage.url" alt="待分析图片" />
+          <div class="attach-meta">
+            <span class="attach-name">{{ attachedImage.name }}</span>
+            <span class="attach-tip">发送后 AI 会分析这张图片</span>
+          </div>
+          <el-button link :icon="Close" @click="clearAttachment" />
+        </div>
+
+        <!-- 图片相关入口 -->
+        <div class="attach-tools">
+          <el-tooltip content="上传图片，让 AI 分析商品卖点" placement="top">
+            <el-button link :icon="Picture" :loading="uploading" @click="pickImage">
+              {{ uploading ? '上传中…' : '上传图片' }}
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="从商品库中选一件商品做图片分析" placement="top">
+            <el-button link :icon="Search" @click="openPicker">分析已有商品</el-button>
+          </el-tooltip>
+        </div>
+
+        <div class="input-row">
+          <el-input
+            v-model="input"
+            type="textarea"
+            :autosize="{ minRows: 1, maxRows: 4 }"
+            resize="none"
+            :placeholder="attachedImage ? '说说你想了解什么，例如：这个商品适合电竞吗？' : '问我点什么，例如：推荐 1-100 元的生活用品'"
+            @keydown.enter.exact.prevent="sendText()"
+          />
+          <el-button type="primary" :icon="Promotion" :loading="streaming" @click="sendText()">发送</el-button>
+        </div>
       </footer>
+
+      <!-- 隐藏的文件选择框 -->
+      <input ref="fileInput" type="file" accept="image/*" class="hidden-file" @change="onFileChange" />
+
+      <!-- 选择已有商品做图片分析 -->
+      <el-dialog v-model="pickerVisible" title="选择要分析的商品" width="640px" append-to-body class="picker-dialog">
+        <el-input
+          v-model="pickerKeyword"
+          placeholder="输入商品名称搜索，留空则显示全部"
+          clearable
+          :prefix-icon="Search"
+          @keyup.enter="loadPickerProducts"
+          @clear="loadPickerProducts"
+        />
+        <div v-loading="pickerLoading" class="picker-grid">
+          <div v-for="p in pickerProducts" :key="p.id" class="picker-item" @click="analyzeProduct(p)">
+            <img :src="p.image" :alt="p.name" />
+            <div class="picker-name">{{ p.name }}</div>
+            <div class="picker-price">¥{{ p.price }}</div>
+          </div>
+          <el-empty v-if="!pickerLoading && pickerProducts.length === 0" description="没有找到商品" :image-size="70" />
+        </div>
+      </el-dialog>
     </section>
   </transition>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { Delete, Close, Promotion, Connection } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { Delete, Close, Promotion, Connection, Picture, Search } from '@element-plus/icons-vue'
+import { uploadApi, productPageApi } from '../api'
 
 const visible = defineModel('visible', { type: Boolean, default: false })
 
@@ -78,11 +130,20 @@ const connected = ref(false)
 const bodyRef = ref(null)
 let socket = null
 
+/* 图片相关状态 */
+const fileInput = ref(null)
+const uploading = ref(false)
+const attachedImage = ref(null)   // { url, name }
+const pickerVisible = ref(false)
+const pickerLoading = ref(false)
+const pickerKeyword = ref('')
+const pickerProducts = ref([])
+
 const quickPrompts = [
   '推荐 1-100 元的生活用品',
+  '分析一下机械键盘的图片卖点',
   '清空我的购物车',
-  '看看我的已支付订单',
-  '把第一个商品加入购物车'
+  '看看我的已支付订单'
 ]
 
 const statusText = computed(() => {
@@ -216,7 +277,8 @@ const waitOpen = timeout => new Promise(resolve => {
 
 const sendText = async text => {
   const content = (text !== undefined ? text : input.value).trim()
-  if (!content || streaming.value) return
+  const image = attachedImage.value
+  if ((!content && !image) || streaming.value) return
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     connect()
     const ok = await waitOpen(5000)
@@ -225,9 +287,80 @@ const sendText = async text => {
       return
     }
   }
-  messages.value.push({ role: 'user', content })
+  const payload = { message: content }
+  if (image) payload.imageUrl = image.url
+  messages.value.push({
+    role: 'user',
+    content: content || '（已上传图片）请帮我分析',
+    image: image ? image.url : ''
+  })
   input.value = ''
-  socket.send(JSON.stringify({ message: content }))
+  attachedImage.value = null
+  socket.send(JSON.stringify(payload))
+}
+
+/* ---------------- 图片上传 / 已有商品分析 ---------------- */
+
+const pickImage = () => fileInput.value && fileInput.value.click()
+
+const onFileChange = async event => {
+  const file = event.target.files && event.target.files[0]
+  event.target.value = ''   // 允许重复选择同一张图
+  if (!file) return
+  const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(file.name)
+  if (!isImage) {
+    ElMessage.warning('请选择图片文件（jpg / png / webp）')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.warning('图片不要超过 5MB')
+    return
+  }
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await uploadApi(fd)
+    attachedImage.value = { url: res.data, name: file.name }
+    ElMessage.success('图片已上传，发送后我会看图分析')
+  } catch (e) {
+    /* 拦截器已提示错误 */
+  } finally {
+    uploading.value = false
+  }
+}
+
+const clearAttachment = () => {
+  attachedImage.value = null
+}
+
+const preview = url => window.open(url, '_blank')
+
+const openPicker = () => {
+  pickerVisible.value = true
+  if (pickerProducts.value.length === 0) loadPickerProducts()
+}
+
+const loadPickerProducts = async () => {
+  pickerLoading.value = true
+  try {
+    const res = await productPageApi({
+      page: 1,
+      pageSize: 60,
+      name: pickerKeyword.value.trim() || undefined
+    })
+    pickerProducts.value = (res.data && res.data.records) || []
+  } catch (e) {
+    pickerProducts.value = []
+  } finally {
+    pickerLoading.value = false
+  }
+}
+
+// 选中商品：交给模型调用「分析商品图片」工具（后端会取该商品图片做视觉分析）
+const analyzeProduct = product => {
+  pickerVisible.value = false
+  sendText(`帮我分析一下商品「${product.name}」的图片，它有哪些优势、适合什么场景？`)
 }
 
 const resetChat = () => {
@@ -467,16 +600,145 @@ onBeforeUnmount(() => {
 
 .ai-footer {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 10px 14px 12px;
   border-top: 1px solid #f2f2f2;
   background: #fff;
 }
 
-.ai-footer :deep(.el-textarea__inner) {
+/* 待分析图片预览 */
+.attach-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #ffe0d2;
+  background: #fff8f4;
+  border-radius: 8px;
+}
+
+.attach-preview img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ffe6da;
+}
+
+.attach-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.attach-name {
+  font-size: 12px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attach-tip {
+  font-size: 11px;
+  color: #999;
+}
+
+/* 图片相关入口 */
+.attach-tools {
+  display: flex;
+  gap: 16px;
+  padding-left: 2px;
+}
+
+.attach-tools :deep(.el-button) {
+  font-size: 12px;
+  color: #8a8a8a;
+}
+
+.attach-tools :deep(.el-button:hover) {
+  color: #f5541f;
+}
+
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.input-row :deep(.el-textarea__inner) {
   border-radius: 8px;
   font-size: 14px;
+}
+
+.hidden-file {
+  display: none;
+}
+
+/* 用户消息里的图片 */
+.msg-image {
+  margin-bottom: 6px;
+  text-align: right;
+}
+
+.msg-image img {
+  max-width: 170px;
+  max-height: 170px;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+  cursor: zoom-in;
+  display: block;
+  margin-left: auto;
+}
+
+/* 商品选择弹窗 */
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  min-height: 130px;
+}
+
+.picker-item {
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fff;
+}
+
+.picker-item:hover {
+  border-color: #ffb696;
+  box-shadow: 0 4px 12px rgba(245, 84, 31, 0.12);
+}
+
+.picker-item img {
+  width: 100%;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #f7f7f7;
+}
+
+.picker-name {
+  font-size: 13px;
+  color: #333;
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-price {
+  font-size: 12px;
+  color: #f5541f;
+  margin-top: 2px;
 }
 
 .ai-slide-enter-active,

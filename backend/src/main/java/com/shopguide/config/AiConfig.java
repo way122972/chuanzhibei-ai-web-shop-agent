@@ -1,7 +1,9 @@
 package com.shopguide.config;
 
 import com.shopguide.ai.http.Utf8HttpClientBuilder;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -41,13 +43,37 @@ public class AiConfig {
      */
     @Bean
     public StreamingChatModel deepSeekStreamingChatModel() {
+        return buildStreaming(buildKey());
+    }
+
+    /**
+     * 同步对话模型：用于「看一眼图片再总结」这类一次性分析（图片分析需要非流式调用）
+     */
+    @Bean
+    public ChatModel deepSeekChatModel() {
+        String key = buildKey();
+        return OpenAiChatModel.builder()
+                .baseUrl(BASE_URL)
+                .apiKey(key)
+                .modelName(MODEL_NAME)
+                .temperature(0.6)
+                .timeout(Duration.ofSeconds(90))
+                .httpClientBuilder(new Utf8HttpClientBuilder())
+                .build();
+    }
+
+    /** 读取 Key 并在缺失时打日志（返回占位 Key，避免应用启动失败） */
+    private String buildKey() {
         String key = apiKey();
         if (key == null) {
             log.warn("未检测到环境变量 {}，AI 助手将不可用（接口会返回配置提示）", API_KEY_ENV);
-            key = "missing-api-key";
-        } else {
-            log.info("DeepSeek 已接入：baseUrl={}，model={}，apiKey={}******", BASE_URL, MODEL_NAME, key.substring(0, Math.min(6, key.length())));
+            return "missing-api-key";
         }
+        log.info("DeepSeek 已接入：baseUrl={}，model={}，apiKey={}******", BASE_URL, MODEL_NAME, key.substring(0, Math.min(6, key.length())));
+        return key;
+    }
+
+    private StreamingChatModel buildStreaming(String key) {
         return OpenAiStreamingChatModel.builder()
                 .baseUrl(BASE_URL)
                 .apiKey(key)
