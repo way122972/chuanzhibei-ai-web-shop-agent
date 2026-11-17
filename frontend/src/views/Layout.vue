@@ -7,6 +7,11 @@
         <span class="title">智能电商导购平台</span>
       </div>
       <div class="header-right">
+        <!-- 圆形 AI 助手按钮：点击在右侧展开对话面板 -->
+        <button class="ai-entry" :class="{ active: aiVisible }" title="AI 助手" @click="aiVisible = !aiVisible">
+          <el-icon><MagicStick /></el-icon>
+          <span class="ai-entry-text">AI</span>
+        </button>
         <el-dropdown>
           <span class="user-box">
             <el-icon><UserFilled /></el-icon>
@@ -72,6 +77,9 @@
         <router-view />
       </el-main>
     </el-container>
+
+    <!-- 右侧 AI 助手对话面板 -->
+    <AiAssistant v-model:visible="aiVisible" />
   </el-container>
 </template>
 
@@ -81,6 +89,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { cartCount, cartState, loadCart } from '../store/cart'
 import { categoryState, loadCategories } from '../store/category'
+import AiAssistant from '../components/AiAssistant.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -88,7 +97,10 @@ const router = useRouter()
 const username = computed(() => localStorage.getItem('username') || '未知用户')
 const activeMenu = computed(() => route.path)
 
-// 数据变更后刷新顶部购物车角标
+// AI 助手面板开关
+const aiVisible = ref(false)
+
+// AI 修改过数据后，刷新顶部购物车角标
 const handleDataChanged = () => {
   loadCart().catch(() => {})
 }
@@ -160,6 +172,45 @@ const handleLogout = () => {
 .header-right {
   display: flex;
   align-items: center;
+}
+
+/* 顶部圆形 AI 助手按钮 */
+.ai-entry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 12px 0 10px;
+  margin-right: 16px;
+  border-radius: 17px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(2px);
+}
+
+.ai-entry:hover {
+  background: #fff;
+  color: #f5541f;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
+}
+
+.ai-entry.active {
+  background: #fff;
+  color: #f5541f;
+}
+
+.ai-entry .el-icon {
+  font-size: 16px;
+}
+
+.ai-entry-text {
+  letter-spacing: 1px;
 }
 
 .user-box {
