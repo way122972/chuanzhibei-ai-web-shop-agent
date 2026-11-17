@@ -21,7 +21,7 @@ import java.util.Set;
  * AI 助手 WebSocket 处理器
  *
  * 协议（JSON 文本帧）：
- *   客户端 → {"message":"帮我推荐 1-100 元的生活用品"}
+ *   客户端 → {"message":"帮我找 200 元以内的生活用品"}
  *   客户端 → {"message":"这个鼠标有什么优势？","imageUrl":"https://.../xxx.jpg"}   带图片提问
  *   服务端 → {"type":"ready","configured":true,"message":"..."}       连接就绪
  *          {"type":"start"}                                          开始回答
@@ -37,8 +37,7 @@ public class AiWebSocketHandler extends TextWebSocketHandler {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     /** 会让数据库数据发生变化的工具（前端据此刷新购物车/列表） */
-    private static final Set<String> MUTATING_TOOLS =
-            Set.of("addProduct", "updateProduct", "deleteProduct", "addToCart", "clearCart");
+    private static final Set<String> MUTATING_TOOLS = Set.of("addToCart", "clearCart");
 
     /** 工具方法名 → 中文提示 */
     private static final Map<String, String> TOOL_LABELS = new HashMap<>();
@@ -48,9 +47,6 @@ public class AiWebSocketHandler extends TextWebSocketHandler {
         TOOL_LABELS.put("listCategories", "查询商品分类");
         TOOL_LABELS.put("viewCart", "查看购物车");
         TOOL_LABELS.put("listOrders", "查询订单");
-        TOOL_LABELS.put("addProduct", "新增商品");
-        TOOL_LABELS.put("updateProduct", "修改商品");
-        TOOL_LABELS.put("deleteProduct", "删除商品");
         TOOL_LABELS.put("addToCart", "加入购物车");
         TOOL_LABELS.put("clearCart", "清空购物车");
         TOOL_LABELS.put("analyzeProductImage", "分析商品图片");
@@ -81,7 +77,7 @@ public class AiWebSocketHandler extends TextWebSocketHandler {
                     "message", "后端未检测到环境变量 DEEPSEEK_API_KEY，AI 助手暂不可用。"));
         } else {
             send(session, Map.of("type", "ready", "configured", true,
-                    "message", "你好，" + username + "！我是导购助手，可以帮你找商品、增删改商品、清空购物车、查订单，也可以上传商品图片帮你分析卖点。"));
+                    "message", "你好，" + username + "！我是导购助手，可以帮你找商品、加购物车、清空购物车、查订单，也可以上传商品图片帮你分析卖点。"));
         }
     }
 

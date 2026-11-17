@@ -25,7 +25,7 @@
       <div ref="bodyRef" class="ai-body">
         <div v-if="messages.length === 0" class="ai-welcome">
           <p class="welcome-title">你好，我是导购助手 👋</p>
-          <p class="welcome-tip">可以帮你查商品、改商品、清空购物车、查订单，也能看懂商品图片、帮你分析它的卖点。试试：</p>
+          <p class="welcome-tip">可以帮你查商品、加购物车、清空购物车、查订单，也能看懂商品图片、帮你分析它的卖点。试试：</p>
           <div class="quick-list">
             <button v-for="q in quickPrompts" :key="q" class="quick-item" @click="sendText(q)">{{ q }}</button>
           </div>
@@ -81,7 +81,7 @@
             type="textarea"
             :autosize="{ minRows: 1, maxRows: 4 }"
             resize="none"
-            :placeholder="attachedImage ? '说说你想了解什么，例如：这个商品适合电竞吗？' : '问我点什么，例如：推荐 1-100 元的生活用品'"
+            :placeholder="attachedImage ? '说说你想了解什么，例如：这个商品适合电竞吗？' : '问我点什么，例如：帮我找 200 元以内的生活用品'"
             @keydown.enter.exact.prevent="sendText()"
           />
           <el-button type="primary" :icon="Promotion" :loading="streaming" @click="sendText()">发送</el-button>
@@ -140,7 +140,7 @@ const pickerKeyword = ref('')
 const pickerProducts = ref([])
 
 const quickPrompts = [
-  '推荐 1-100 元的生活用品',
+  '帮我找 200 元以内的生活用品',
   '分析一下机械键盘的图片卖点',
   '清空我的购物车',
   '看看我的已支付订单'

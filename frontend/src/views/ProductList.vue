@@ -9,7 +9,7 @@
       </el-breadcrumb>
     </div>
 
-    <!-- 搜索区：名称模糊查询 + 价格范围查询（热销商品页才有新增商品入口，分类页只做展示） -->
+    <!-- 搜索区：名称模糊查询 + 价格范围查询 -->
     <div class="toolbar">
       <div class="search-area">
         <el-input v-model="query.name" placeholder="商品名称" clearable style="width: 200px" @keyup.enter="handleSearch" />
@@ -20,18 +20,15 @@
         <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
         <el-button :icon="Refresh" @click="handleReset">重置</el-button>
       </div>
-      <!-- 分类页（生活用品 / 电子产品）不提供新增商品功能 -->
-      <el-button v-if="!isCategoryMode" type="primary" :icon="Plus" @click="openAddDialog">新增商品</el-button>
     </div>
 
     <!-- 商品模块：一行4个，一页8个（两行） -->
     <el-row :gutter="20" class="product-grid" v-loading="loading">
       <el-col :span="6" v-for="item in list" :key="item.id">
-        <div class="product-card" :class="{ 'is-off': item.status === 0 }" @click="openAction(item)">
+        <div class="product-card">
           <div class="img-wrap">
             <img :src="item.image || defaultImg" alt="商品图片" />
-            <el-tag v-if="item.status === 0" class="off-tag" type="info" effect="dark">已下架</el-tag>
-            <el-tag v-else class="off-tag hot-tag" effect="dark">热销中</el-tag>
+            <el-tag class="off-tag hot-tag" effect="dark">热销中</el-tag>
             <!-- 所属分类：来自 product + category 多表查询结果 -->
             <el-tag v-if="item.categoryName" class="cate-tag" effect="dark" round>{{ item.categoryName }}</el-tag>
           </div>
@@ -41,8 +38,7 @@
               <div class="p-price">¥{{ item.price }}</div>
             </div>
             <!-- 名称/价格右侧的圆形加号：点击加入购物车 -->
-            <button class="add-cart-btn" :disabled="item.status === 0"
-                    :title="item.status === 0 ? '商品已下架，无法加入购物车' : '加入购物车'"
+            <button class="add-cart-btn" title="加入购物车"
                     @click.stop="handleAddToCart(item)">
               <el-icon><Plus /></el-icon>
             </button>
@@ -50,7 +46,7 @@
         </div>
       </el-col>
       <el-empty v-if="!loading && list.length === 0"
-                :description="isCategoryMode ? `「${pageTitle}」分类下暂无商品` : '暂无商品，点击右上角“新增商品”添加'" class="empty" />
+                :description="isCategoryMode ? `「${pageTitle}」分类下暂无商品` : '暂无商品'" class="empty" />
     </el-row>
 
     <!-- 分页查询条 -->
@@ -59,72 +55,17 @@
                      :page-size="query.pageSize" :current-page="query.page"
                      @current-change="handlePageChange" />
     </div>
-
-    <!-- 新增 / 修改商品弹窗：商品名称、价格输入框 + 图片上传框 -->
-    <el-dialog v-model="formDialogVisible" :title="dialogMode === 'add' ? '新增商品' : '修改商品'"
-               width="480px" destroy-on-close>
-      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
-        <el-form-item label="商品名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入商品名称" maxlength="50" />
-        </el-form-item>
-        <el-form-item label="商品分类" prop="categoryId">
-          <el-select v-model="form.categoryId" placeholder="请选择商品分类" clearable style="width: 200px">
-            <el-option v-for="c in categoryState.list" :key="c.id" :label="c.name" :value="c.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="商品价格" prop="price">
-          <el-input-number v-model="form.price" :min="0.01" :precision="2" :step="1" style="width: 200px" />
-        </el-form-item>
-        <el-form-item label="商品图片" prop="image">
-          <el-upload class="uploader" drag action="#" :show-file-list="false" :auto-upload="false"
-                     :on-change="handleFileChange" accept="image/*">
-            <img v-if="form.image" :src="form.image" class="preview" />
-            <div v-else class="uploader-empty">
-              <el-icon class="uploader-icon"><Plus /></el-icon>
-              <div class="uploader-text">将图片拖到此处，或<em>点击上传</em></div>
-            </div>
-          </el-upload>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="formDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
-          {{ dialogMode === 'add' ? '确定' : '确认修改' }}
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 点击商品卡片：下架/上架、修改、删除 选项 -->
-    <el-dialog v-model="actionDialogVisible" :title="`商品操作 - ${currentProduct?.name || ''}`" width="420px">
-      <div class="action-body" v-if="currentProduct">
-        <img :src="currentProduct.image || defaultImg" class="action-img" />
-        <div class="action-meta">
-          <div class="p-name">{{ currentProduct.name }}</div>
-          <div class="p-price">¥{{ currentProduct.price }}</div>
-          <el-tag :type="currentProduct.status === 1 ? 'success' : 'info'">
-            {{ currentProduct.status === 1 ? '上架中' : '已下架' }}
-          </el-tag>
-        </div>
-      </div>
-      <template #footer>
-        <el-button :type="currentProduct?.status === 1 ? 'warning' : 'success'" @click="handleChangeStatus">
-          {{ currentProduct?.status === 1 ? '下架商品' : '上架商品' }}
-        </el-button>
-        <el-button type="primary" plain @click="openEditDialog">修改商品</el-button>
-        <el-button type="danger" @click="handleDelete">删除商品</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
-import { productPageApi, productAddApi, productUpdateApi, uploadApi, changeStatusApi, deleteProductApi } from '../api'
+import { productPageApi } from '../api'
 import { addToCart } from '../store/cart'
-import { categoryState, loadCategories, categoryNameOf } from '../store/category'
+import { loadCategories, categoryNameOf } from '../store/category'
 
 const route = useRoute()
 
@@ -193,132 +134,14 @@ watch(() => route.params.id, () => {
   loadProducts()
 })
 
-/* ---------- 新增 / 修改商品弹窗 ---------- */
-const formDialogVisible = ref(false)
-const dialogMode = ref('add')          // add = 新增，edit = 修改
-const submitLoading = ref(false)
-const formRef = ref()
-const form = reactive({ id: null, name: '', categoryId: null, price: undefined, image: '' })
-
-const formRules = {
-  name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
-  price: [{ required: true, message: '请输入商品价格', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择商品分类', trigger: 'change' }]
-}
-
-// 打开新增弹窗：仅热销商品页可用（分类页只做展示，已隐藏入口，这里再兜底一次）
-const openAddDialog = () => {
-  if (isCategoryMode.value) return
-  dialogMode.value = 'add'
-  form.id = null
-  form.name = ''
-  form.categoryId = null
-  form.price = undefined
-  form.image = ''
-  formDialogVisible.value = true
-}
-
-// 打开修改弹窗：回显当前商品的原信息（含所属分类）
-const openEditDialog = () => {
-  const p = currentProduct.value
-  if (!p) return
-  dialogMode.value = 'edit'
-  form.id = p.id
-  form.name = p.name
-  form.categoryId = p.categoryId ? Number(p.categoryId) : null
-  form.price = Number(p.price)
-  form.image = p.image || ''
-  actionDialogVisible.value = false    // 先关掉操作框，再弹出修改框
-  formDialogVisible.value = true
-}
-
-// 选择图片后先上传（OSS），拿回URL再提交表单
-const handleFileChange = async file => {
-  if (!file.raw) return
-  const fd = new FormData()
-  fd.append('file', file.raw)
-  try {
-    const res = await uploadApi(fd)
-    form.image = res.data
-    ElMessage.success('图片上传成功')
-  } catch (e) { /* 拦截器已提示 */ }
-}
-
-// 提交：新增走 add 接口，修改走 update 接口
-const handleSubmit = () => {
-  formRef.value.validate(async valid => {
-    if (!valid) return
-    submitLoading.value = true
-    try {
-      if (dialogMode.value === 'add') {
-        await productAddApi({
-          name: form.name, categoryId: form.categoryId, price: form.price, image: form.image, status: 1
-        })
-        ElMessage.success('新增商品成功')
-      } else {
-        await productUpdateApi({
-          id: form.id, name: form.name, categoryId: form.categoryId, price: form.price, image: form.image
-        })
-        ElMessage.success('修改商品成功')
-      }
-      formDialogVisible.value = false
-      handleSearch()
-    } finally {
-      submitLoading.value = false
-    }
-  })
-}
-
 /* ---------- 加入购物车（写入后端 cart 表） ---------- */
 const handleAddToCart = async item => {
-  if (item.status === 0) {
-    ElMessage.warning('该商品已下架，无法加入购物车')
-    return
-  }
   try {
     await addToCart(item)
     ElMessage.success(`「${item.name}」已加入购物车`)
   } catch (e) {
     /* 失败提示已由请求拦截器统一处理 */
   }
-}
-
-/* ---------- 卡片操作：下架 / 删除 ---------- */
-const actionDialogVisible = ref(false)
-const currentProduct = ref(null)
-
-const openAction = item => {
-  currentProduct.value = item
-  actionDialogVisible.value = true
-}
-
-// 下架/上架：改变商品状态
-const handleChangeStatus = () => {
-  const p = currentProduct.value
-  const action = p.status === 1 ? '下架' : '上架'
-  ElMessageBox.confirm(`确定要${action}商品「${p.name}」吗？`, '提示', { type: 'warning' })
-    .then(async () => {
-      await changeStatusApi(p.id)
-      ElMessage.success(`${action}成功`)
-      actionDialogVisible.value = false
-      loadProducts()
-    })
-    .catch(() => {})
-}
-
-// 删除：从表中删除
-const handleDelete = () => {
-  const p = currentProduct.value
-  ElMessageBox.confirm(`确定要删除商品「${p.name}」吗？删除后不可恢复！`, '危险操作', { type: 'error' })
-    .then(async () => {
-      await deleteProductApi(p.id)
-      ElMessage.success('删除成功')
-      actionDialogVisible.value = false
-      // 若当前页删除后为空则回退一页
-      if (list.value.length === 1 && query.page > 1) query.page--
-      loadProducts()
-    })
-    .catch(() => {})
 }
 
 onMounted(async () => {
@@ -382,7 +205,6 @@ const handleDataChanged = () => {
   background: #fff;
   border-radius: 10px;
   overflow: hidden;
-  cursor: pointer;
   transition: all 0.25s;
   margin-bottom: 20px;
   border: 1px solid #f2f2f2;
@@ -392,10 +214,6 @@ const handleDataChanged = () => {
   transform: translateY(-4px);
   box-shadow: 0 10px 24px rgba(255, 106, 60, 0.18);
   border-color: #ffb696;
-}
-
-.product-card.is-off {
-  opacity: 0.6;
 }
 
 .img-wrap {
@@ -508,62 +326,5 @@ const handleDataChanged = () => {
   display: flex;
   justify-content: center;
   margin-top: 10px;
-}
-
-/* 上传框 */
-.uploader {
-  width: 100%;
-}
-
-.uploader :deep(.el-upload-dragger) {
-  width: 100%;
-  height: 140px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.preview {
-  width: 100%;
-  height: 130px;
-  object-fit: cover;
-  border-radius: 6px;
-}
-
-.uploader-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.uploader-icon {
-  font-size: 32px;
-  color: #ff6a3c;
-}
-
-.uploader-text {
-  font-size: 13px;
-  color: #888;
-}
-
-/* 操作弹窗 */
-.action-body {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-.action-img {
-  width: 110px;
-  height: 110px;
-  object-fit: cover;
-  border-radius: 8px;
-  background: var(--sg-primary-light);
-}
-
-.action-meta .p-price {
-  margin: 6px 0 8px;
 }
 </style>

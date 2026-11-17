@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
  *
  * 每个 @Tool 方法都会被 LangChain4j 转成工具描述交给大模型，
  * 模型根据用户问题自行决定调用哪个方法、传什么参数，方法内部直接操作数据库。
+ * 工具只包含：商品/分类/购物车/订单查询、加入购物车、清空购物车、商品图片分析；
+ * 没有商品维护类工具（新增/修改/删除/上下架已随前端功能删减移除）。
  *
  * 注意：工具对象在每次建立 WebSocket 会话时按「当前登录用户」创建，
  * 所有购物车操作都使用构造时传入的 userId，不依赖 ThreadLocal，
@@ -149,82 +151,6 @@ public class ShopTools {
                     .append("，下单时间：").append(c.getCreateTime()).append("\n");
         }
         return sb.toString();
-    }
-
-    /* ==================== 商品维护类 ==================== */
-
-    @Tool("新增一个商品。需要商品名称、价格（元）和分类名称；用户明确要求新增商品时调用")
-    public String addProduct(
-            @P("商品名称") String name,
-            @P("商品价格（元）") double price,
-            @P(value = "商品分类名称，例如“生活用品”“电子产品”", required = false) String categoryName) {
-        if (name == null || name.trim().isEmpty()) {
-            return "新增失败：商品名称不能为空。";
-        }
-        if (price <= 0) {
-            return "新增失败：商品价格必须大于 0。";
-        }
-        String cate = (categoryName == null || categoryName.trim().isEmpty()) ? "生活用品" : categoryName.trim();
-        Category category = findCategory(cate);
-        if (category == null) {
-            return "新增失败：分类「" + cate + "」不存在。现有分类：" + categoryNames() + "。";
-        }
-        Product product = new Product();
-        product.setName(name.trim());
-        product.setPrice(BigDecimal.valueOf(price).setScale(2, java.math.RoundingMode.HALF_UP));
-        product.setCategoryId(category.getId());
-        product.setStatus(1);
-        product.setImage("");
-        product.setCreateTime(LocalDateTime.now());
-        product.setUpdateTime(LocalDateTime.now());
-        productMapper.insert(product);
-        return "新增成功：商品「" + product.getName() + "」，价格 ¥" + product.getPrice() + "，分类「" + category.getName() + "」。";
-    }
-
-    @Tool("修改已有商品的信息（名称、价格、分类），按原商品名称定位；参数不修改时传空字符串或 0")
-    public String updateProduct(
-            @P("要修改的商品原名称（需准确）") String name,
-            @P(value = "新的商品名称，不改则传空字符串", required = false) String newName,
-            @P(value = "新的价格（元），不改则传 0", required = false) double newPrice,
-            @P(value = "新的分类名称，不改则传空字符串", required = false) String newCategoryName) {
-        Product product = byName(name);
-        if (product == null) {
-            return "修改失败：没有找到名为「" + name + "」的商品。可以先用查询工具确认商品名称。";
-        }
-        StringBuilder change = new StringBuilder();
-        if (newName != null && !newName.trim().isEmpty()) {
-            change.append("名称 ").append(product.getName()).append(" → ").append(newName.trim()).append("；");
-            product.setName(newName.trim());
-        }
-        if (newPrice > 0) {
-            BigDecimal price = BigDecimal.valueOf(newPrice).setScale(2, java.math.RoundingMode.HALF_UP);
-            change.append("价格 ¥").append(product.getPrice()).append(" → ¥").append(price).append("；");
-            product.setPrice(price);
-        }
-        if (newCategoryName != null && !newCategoryName.trim().isEmpty()) {
-            Category category = findCategory(newCategoryName.trim());
-            if (category == null) {
-                return "修改失败：分类「" + newCategoryName.trim() + "」不存在。现有分类：" + categoryNames() + "。";
-            }
-            change.append("分类 → ").append(category.getName()).append("；");
-            product.setCategoryId(category.getId());
-        }
-        if (change.length() == 0) {
-            return "没有提供任何需要修改的内容，未做修改。";
-        }
-        product.setUpdateTime(LocalDateTime.now());
-        productMapper.updateById(product);
-        return "修改成功：商品「" + product.getName() + "」已更新（" + change + "）。";
-    }
-
-    @Tool("删除一个商品，按商品名称定位；删除后不可恢复，用户明确要求删除时调用")
-    public String deleteProduct(@P("要删除的商品名称（需准确）") String name) {
-        Product product = byName(name);
-        if (product == null) {
-            return "删除失败：没有找到名为「" + name + "」的商品。可以先用查询工具确认商品名称。";
-        }
-        productMapper.deleteById(product.getId());
-        return "删除成功：商品「" + product.getName() + "」（¥" + product.getPrice() + "）已从商品表移除。";
     }
 
     /* ==================== 图片分析类 ==================== */

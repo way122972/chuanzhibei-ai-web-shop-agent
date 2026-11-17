@@ -35,12 +35,6 @@ const routes = [
         name: 'Order',
         component: () => import('../views/OrderList.vue'),
         meta: { title: '订单状态' }
-      },
-      {
-        path: 'statistic',
-        name: 'Statistic',
-        component: () => import('../views/Statistic.vue'),
-        meta: { title: '销售数据统计' }
       }
     ]
   },

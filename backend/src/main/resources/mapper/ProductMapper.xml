@@ -31,6 +31,7 @@
     <!--
         多表关联分页查询
         product LEFT JOIN category，支持：分类过滤、名称模糊、价格区间
+        商品维护功能已下线，页面只展示在售商品，固定过滤 status = 1
         参数：page(分页对象) + categoryId/name/minPrice/maxPrice
     -->
     <select id="selectPageWithCategory" resultMap="ProductWithCategoryMap">
@@ -39,6 +40,7 @@
         FROM product p
         LEFT JOIN category c ON p.category_id = c.id
         <where>
+            AND p.status = 1
             <if test="categoryId != null">
                 AND p.category_id = #{categoryId}
             </if>

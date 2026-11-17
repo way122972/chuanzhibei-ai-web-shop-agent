@@ -64,11 +64,6 @@
             <el-icon><Tickets /></el-icon>
             <span>订单状态</span>
           </el-menu-item>
-          <!-- 销售数据统计：当天 / 近7天 的销售数量 TOP5 饼图 + 柱状图 -->
-          <el-menu-item index="/statistic">
-            <el-icon><DataAnalysis /></el-icon>
-            <span>销售数据统计</span>
-          </el-menu-item>
         </el-menu>
       </el-aside>
 

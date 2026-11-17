@@ -18,24 +18,4 @@ public interface ProductService {
      */
     PageBean<Product> pageQuery(int page, int pageSize, Integer categoryId, String name,
                                 BigDecimal minPrice, BigDecimal maxPrice);
-
-    /**
-     * 新增商品
-     */
-    boolean add(Product product);
-
-    /**
-     * 修改商品（按 id 更新名称、价格、图片、分类，状态不变）
-     */
-    boolean update(Product product);
-
-    /**
-     * 下架/上架（改变状态）
-     */
-    boolean changeStatus(Integer id);
-
-    /**
-     * 删除商品
-     */
-    boolean delete(Integer id);
 }

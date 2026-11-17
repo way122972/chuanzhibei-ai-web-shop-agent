@@ -15,40 +15,13 @@ export function productPageApi(params) {
 }
 
 /**
- * 新增商品：POST /product/add
- */
-export function productAddApi(data) {
-  return request.post('/product/add', data)
-}
-
-/**
- * 修改商品：PUT /product/update
- */
-export function productUpdateApi(data) {
-  return request.put('/product/update', data)
-}
-
-/**
  * 图片上传（阿里云OSS）：POST /product/upload
+ * AI 助手「上传图片分析」依赖本接口
  */
 export function uploadApi(formData) {
   return request.post('/product/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
-}
-
-/**
- * 下架/上架：PUT /product/status/{id}
- */
-export function changeStatusApi(id) {
-  return request.put(`/product/status/${id}`)
-}
-
-/**
- * 删除商品：DELETE /product/delete/{id}
- */
-export function deleteProductApi(id) {
-  return request.delete(`/product/delete/${id}`)
 }
 
 /* ==================== 商品分类 ==================== */
@@ -119,14 +92,4 @@ export function cartClearApi() {
  */
 export function cartCheckoutApi(data) {
   return request.post('/cart/checkout', data)
-}
-
-/* ==================== 销售数据统计 ==================== */
-
-/**
- * 销售数量排行（饼图 + 柱状图）：GET /statistic/top-sales?days=1|7&limit=5
- * days=1 当天，days=7 近7天
- */
-export function topSalesApi(params) {
-  return request.get('/statistic/top-sales', { params })
 }
