@@ -1,0 +1,43 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/shop_guide?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456          # TODO: 改成你自己的 MySQL 密码
+    type: com.alibaba.druid.pool.DruidDataSource
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+mybatis-plus:
+  # 手写 SQL 统一放在 resources/mapper 下的 XML 映射文件中
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.shopguide.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl   # 控制台打印SQL，方便调试
+  global-config:
+    db-config:
+      id-type: auto        # 主键自增
+
+# JWT 配置
+jwt:
+  secret: ShopGuideJwtSecretKey2026ChuanZhiBei
+  expire: 86400000         # 令牌有效期 24 小时（毫秒）
+
+# 存储配置（对应 config/StorageProperties.java，prefix = storage）
+# 图片统一上传到阿里云 OSS，不做本地磁盘存储。
+# access-key-id / access-key-secret 不写明文，改为读取同名的环境变量：
+#   OSS_ACCESS_KEY_ID      阿里云 AccessKey ID
+#   OSS_ACCESS_KEY_SECRET  阿里云 AccessKey Secret
+# 冒号后的空值为默认值，环境变量未设置时为空，上传接口会直接返回“未配置 OSS”提示。
+storage:
+  oss:
+    endpoint: oss-cn-beijing.aliyuncs.com
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    bucket-name: projectww

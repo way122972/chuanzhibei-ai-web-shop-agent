@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    销售数据统计 Mapper 映射文件
+    对应接口：com.shopguide.mapper.StatisticMapper
+    数据来源：cart 表（status = 1 已支付），update_time 即支付时间，作为销售时间口径
+-->
+<mapper namespace="com.shopguide.mapper.StatisticMapper">
+
+    <!--
+        指定时间区间内，已支付商品按销售数量排行前 N
+        返回：productId / productName / totalQuantity / totalAmount
+    -->
+    <select id="selectTopSales" resultType="com.shopguide.vo.TopProductVO">
+        SELECT
+            c.product_id                AS productId,
+            c.product_name              AS productName,
+            SUM(c.quantity)             AS totalQuantity,
+            SUM(c.price * c.quantity)   AS totalAmount
+        FROM cart c
+        WHERE c.status = 1
+          AND c.update_time &gt;= #{startTime}
+        GROUP BY c.product_id, c.product_name
+        ORDER BY totalQuantity DESC, totalAmount DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
