@@ -136,6 +136,17 @@ public class AiWebSocketHandler extends TextWebSocketHandler {
                 // 带图片：先做一次视觉分析（同步，非流式），再把结论交给流式助手组织语言
                 send(session, Map.of("type", "tool", "name", "分析图片"));
                 String analysis = productVisionService.analyzeUploadedImage(imageUrl, text);
+                if (isVisionFailure(analysis)) {
+                    // 识别失败时直接告诉用户真实原因，避免助手把失败信息包装成“看不到图片”
+                    log.warn("上传图片的分析失败：{}", analysis);
+                    send(session, Map.of("type", "delta", "content", analysis));
+                    Map<String, Object> done = new HashMap<>();
+                    done.put("type", "done");
+                    done.put("dataChanged", false);
+                    send(session, done);
+                    ai.unlock();
+                    return;
+                }
                 question = composeImageQuestion(analysis, text);
             }
             TokenStream stream = ai.assistant().chat(question);
@@ -217,6 +228,15 @@ public class AiWebSocketHandler extends TextWebSocketHandler {
                 + "\n\n用户的问题是：" + userQuestion
                 + "\n\n请基于上面的图片分析结果回答用户，像你自己看到图片一样自然描述；"
                 + "不要再提“系统分析 / 视觉分析结果”这类字眼，也不要编造分析里没有的外观细节。";
+    }
+
+    /** 判断视觉分析是否返回了失败说明（而不是真正的分析结论） */
+    private boolean isVisionFailure(String analysis) {
+        if (analysis == null || analysis.trim().isEmpty()) {
+            return true;
+        }
+        return analysis.startsWith("图片")
+                && (analysis.contains("失败") || analysis.contains("没有返回") || analysis.contains("无法"));
     }
 
     /** 把底层异常翻译成用户能看懂的提示 */

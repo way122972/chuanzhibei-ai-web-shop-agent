@@ -1,9 +1,7 @@
 package com.shopguide.config;
 
 import com.shopguide.ai.http.Utf8HttpClientBuilder;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +16,7 @@ import java.time.Duration;
  * 只需把 baseUrl 指向 https://api.deepseek.com/v1、modelName 指定 deepseek-chat 即可。
  *
  * API Key 不写进代码/配置文件，统一从环境变量 DEEPSEEK_API_KEY 读取。
+ * 图片分析用的视觉模型单独配置（默认 deepseek-flash），可用 DEEPSEEK_VISION_MODEL 覆盖。
  */
 @Slf4j
 @Configuration
@@ -32,10 +31,25 @@ public class AiConfig {
     /** 对话模型 */
     private static final String MODEL_NAME = "deepseek-chat";
 
+    /**
+     * 视觉（看图）模型：必须是 input_modalities 含 image 的模型。
+     * DeepSeek 当前为 deepseek-flash（DeepSeek-V4.1-Flash），可用环境变量覆盖。
+     */
+    private static final String DEFAULT_VISION_MODEL = "deepseek-flash";
+
+    /** 覆盖视觉模型的环境变量名 */
+    public static final String VISION_MODEL_ENV = "DEEPSEEK_VISION_MODEL";
+
     /** 读取环境变量中的 API Key，未配置时返回 null */
     public static String apiKey() {
         String key = System.getenv(API_KEY_ENV);
         return (key == null || key.trim().isEmpty()) ? null : key.trim();
+    }
+
+    /** 读取视觉模型名（默认 deepseek-flash） */
+    public static String visionModelName() {
+        String model = System.getenv(VISION_MODEL_ENV);
+        return (model == null || model.trim().isEmpty()) ? DEFAULT_VISION_MODEL : model.trim();
     }
 
     /**
@@ -47,20 +61,11 @@ public class AiConfig {
     }
 
     /**
-     * 同步对话模型：用于「看一眼图片再总结」这类一次性分析（图片分析需要非流式调用）
+     * 说明：图片分析没有走 LangChain4j —— 1.0.1 版本把 ImageContent 序列化成 image_url 时
+     * 对 URL 形式支持不完整，实测模型读不到图（表现为「看不到图片」）。
+     * 视觉调用改由 {@link com.shopguide.ai.ProductVisionService} 直接请求 HTTP 接口，
+     * 并且先把图片下载转成 base64 再发送，稳定性更好。
      */
-    @Bean
-    public ChatModel deepSeekChatModel() {
-        String key = buildKey();
-        return OpenAiChatModel.builder()
-                .baseUrl(BASE_URL)
-                .apiKey(key)
-                .modelName(MODEL_NAME)
-                .temperature(0.6)
-                .timeout(Duration.ofSeconds(90))
-                .httpClientBuilder(new Utf8HttpClientBuilder())
-                .build();
-    }
 
     /** 读取 Key 并在缺失时打日志（返回占位 Key，避免应用启动失败） */
     private String buildKey() {
@@ -69,7 +74,8 @@ public class AiConfig {
             log.warn("未检测到环境变量 {}，AI 助手将不可用（接口会返回配置提示）", API_KEY_ENV);
             return "missing-api-key";
         }
-        log.info("DeepSeek 已接入：baseUrl={}，model={}，apiKey={}******", BASE_URL, MODEL_NAME, key.substring(0, Math.min(6, key.length())));
+        log.info("DeepSeek 已接入：baseUrl={}，对话模型={}，视觉模型={}，apiKey={}******",
+                BASE_URL, MODEL_NAME, visionModelName(), key.substring(0, Math.min(6, key.length())));
         return key;
     }
 

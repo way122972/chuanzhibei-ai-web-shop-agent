@@ -43,7 +43,7 @@
               <img :src="m.image" alt="图片" @click="preview(m.image)" />
             </div>
             <div class="bubble" :class="{ error: m.error }">
-              <span v-if="m.content">{{ m.content }}</span>
+              <span v-if="m.content">{{ formatMsg(m.content) }}</span>
               <span v-else-if="m.streaming" class="thinking">正在思考中…</span>
               <i v-if="m.streaming && m.content" class="cursor"></i>
             </div>
@@ -154,6 +154,9 @@ const statusText = computed(() => {
 const statusClass = computed(() => ({ on: connected.value, pending: connecting.value }))
 
 /* ---------------- 消息操作 ---------------- */
+
+// 气泡文本格式化：去掉模型输出中的 Markdown 星号（**加粗** / *强调*），展示为纯文本
+const formatMsg = text => (text || '').replace(/\*+/g, '')
 
 const pushAssistant = (content = '') => {
   const msg = { role: 'assistant', content, tools: [], streaming: false, error: false }
@@ -534,7 +537,8 @@ onBeforeUnmount(() => {
 
 .msg.user .msg-content {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .tool-chips {
