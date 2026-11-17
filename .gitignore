@@ -9,6 +9,7 @@ hs_err_pid*
 # ===== Node / Vite（前端） =====
 frontend/node_modules/
 frontend/dist/
+frontend/.vite/
 frontend/*.local
 npm-debug.log*
 yarn-error.log*
@@ -25,6 +26,10 @@ yarn-error.log*
 # ===== 系统文件 =====
 .DS_Store
 Thumbs.db
+
+# ===== 环境变量（真实密钥，不入库；示例文件 .env.example 保留） =====
+.env
+.env.local
 
 # ===== 临时/上传文件 =====
 *.tmp

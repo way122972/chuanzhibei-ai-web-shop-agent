@@ -2,6 +2,10 @@ server:
   port: 8081
 
 spring:
+  # 加载项目根目录的 .env 文件（properties 格式），密钥可不进代码/配置文件
+  # 系统环境变量优先级高于 .env；.env 不存在时因 optional: 前缀不会报错
+  config:
+    import: optional:file:.env[.properties]
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/shop_guide?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
